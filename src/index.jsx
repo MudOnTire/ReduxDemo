@@ -4,6 +4,11 @@ import TodoStore from './todo';
 import store from './todo';
 
 const FilterLink = ({ filter, children }) => {
+  if (filter === TodoStore.getState().visibilityFilter) {
+    return (
+      <span>{children}</span>
+    )
+  }
   return (
     <a
       href="#"
@@ -14,6 +19,7 @@ const FilterLink = ({ filter, children }) => {
           filter: filter
         });
       }}
+      style={{ padding: '10px' }}
     >
       {children}
     </a>

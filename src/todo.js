@@ -1,6 +1,7 @@
 const deepFreeze = require('deep-freeze');
 const expect = require('expect');
 const Redux = require('redux');
+import {Provider} from 'react-redux';
 
 const todo = (state, action) => {
     switch (action.type) {
