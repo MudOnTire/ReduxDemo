@@ -52,6 +52,4 @@ const todoApp = Redux.combineReducers({
     visibilityFilter
 })
 
-const store = Redux.createStore(todoApp);
-
-export default store;
+export default todoApp;

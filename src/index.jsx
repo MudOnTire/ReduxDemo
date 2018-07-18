@@ -1,10 +1,88 @@
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
-import TodoStore from './todo';
-import store from './todo';
+import { Provider } from 'react-redux';
+import { connect } from 'react-redux';
+import todoApp from './todo';
+import todoActions from './todoActions';
 
-const FilterLink = ({ filter, children }) => {
-  if (filter === TodoStore.getState().visibilityFilter) {
+const getVisibleTodos = (todos, filter) => {
+  switch (filter) {
+    case 'SHOW_COMPLETED':
+      return todos.filter(t => t.completed);
+    case 'SHOW_UNCOMPLETED':
+      return todos.filter(t => !t.completed);
+    default:
+      return todos;
+  }
+}
+
+//add todos
+let AddTodo = ({ dispatch }) => {
+  let input;
+
+  return (
+    <div>
+      <input
+        ref={node => { input = node; }}
+        type="text"
+        onKeyPress={(event) => {
+          if (event.key === 'Enter') {
+            dispatch(todoActions.addTodo(input.value));
+            input.value = '';
+          }
+        }}
+        placeholder="Please enter your todo, and press Enter to add it to list"
+      />
+    </div>
+  )
+}
+
+AddTodo = connect()(AddTodo);
+
+// todo list
+const Todo = ({ onClick, text, completed, id }) => (
+  <li
+    onClick={onClick}
+    style={{
+      textDecoration: completed ? 'line-through' : 'none'
+    }}
+  >
+    {`${id}: ${text}`}
+  </li>
+)
+
+const TodoList = ({ todos, onTodoClick }) => (
+  <ul>
+    {
+      todos.map(todo =>
+        <Todo
+          key={todo.id}
+          {...todo}
+          onClick={() => onTodoClick(todo.id)}
+        />)
+    }
+  </ul>
+)
+
+//mapStateToProps
+const mapStateToTodoListProps = (state) => {
+  return {
+    todos: getVisibleTodos(state.todos, state.visibilityFilter)
+  }
+}
+
+const mapDispatchToTodoListProps = (dispatch) => {
+  return {
+    onTodoClick: (id) =>
+      dispatch(todoActions.toggleTodo(id))
+  }
+}
+
+const VisibleTodoList = connect(mapStateToTodoListProps, mapDispatchToTodoListProps)(TodoList);
+
+//footer
+const Link = ({ active, children, onFilterClick }) => {
+  if (active) {
     return (
       <span>{children}</span>
     )
@@ -13,11 +91,9 @@ const FilterLink = ({ filter, children }) => {
     <a
       href="#"
       onClick={e => {
+        console.log(onFilterClick);
         e.preventDefault();
-        store.dispatch({
-          type: 'SET_VISIBILITY',
-          filter: filter
-        });
+        onFilterClick();
       }}
       style={{ padding: '10px' }}
     >
@@ -25,83 +101,51 @@ const FilterLink = ({ filter, children }) => {
     </a>
   )
 }
-class TodoList extends Component {
 
-  nextTodoId = 0;
+const mapStateToLinkProps = (state, props) => {
+  return {
+    active: state.visibilityFilter === props.filter
+  };
+};
 
-  onKeyPress = (event, param) => {
-    if (event.key === 'Enter') {
-      const value = this.input.value;
-      TodoStore.dispatch({
-        type: 'ADD_TODO',
-        text: value,
-        id: this.nextTodoId++
-      });
-    }
-  }
-
-  render() {
-    return (
-      <div>
-        <input
-          type="text"
-          onKeyPress={this.onKeyPress}
-          placeholder="Please enter your todo, and press Enter to add it to list"
-          ref={node => { this.input = node }}
-        />
-        <ul>
-          {
-            TodoStore.getState().todos.map((todo, index) => {
-              const li = (
-                <li
-                  key={todo.id}
-                  onClick={() => {
-                    TodoStore.dispatch({
-                      type: 'TOGGLE_TODO',
-                      id: todo.id
-                    })
-                  }}
-                  style={{
-                    textDecoration: todo.completed ? 'line-through' : 'none'
-                  }}
-                >
-                  {`${todo.id}: ${todo.text}`}
-                </li>
-              );
-              switch (TodoStore.getState().visibilityFilter) {
-                case 'SHOW_ALL':
-                  return li;
-                case 'SHOW_COMPLETED':
-                  if (todo.completed) {
-                    return li;
-                  } else {
-                    return null;
-                  }
-                case 'SHOW_UNCOMPLETED':
-                  if (todo.completed) {
-                    return null;
-                  } else {
-                    return li;
-                  }
-              }
-            })
-          }
-        </ul>
-        <FilterLink filter="SHOW_ALL">All</FilterLink>
-        <FilterLink filter="SHOW_COMPLETED">Completed</FilterLink>
-        <FilterLink filter="SHOW_UNCOMPLETED">Uncompleted</FilterLink>
-      </div>
-    )
+const mapDispatchToLinkProps = (dispatch, props) => {
+  return {
+    onFilterClick: () => dispatch(todoActions.setVisibilityFilter(props.filter))
   }
 }
 
-const render = () => {
+const FilterLink = connect(mapStateToLinkProps, mapDispatchToLinkProps)(Link);
 
-  ReactDOM.render(
-    <TodoList />,
-    document.getElementById('root')
-  );
-};
+const Footer = () => (
+  <div>
+    <FilterLink filter="SHOW_ALL">
+      All
+    </FilterLink>
+    <FilterLink filter="SHOW_COMPLETED">
+      Completed
+    </FilterLink>
+    <FilterLink filter="SHOW_UNCOMPLETED">
+      Uncompleted
+    </FilterLink>
+  </div>
+)
 
-TodoStore.subscribe(render);
-render();
+//todo app
+const TodoApp = () => (
+  <div>
+    <AddTodo />
+    <VisibleTodoList />
+    <Footer />
+  </div>
+);
+
+const createStore = require('redux').createStore;
+
+ReactDOM.render(
+  <Provider
+    store={createStore(todoApp)}
+  >
+    <TodoApp />
+  </Provider>,
+  document.getElementById('root')
+);
